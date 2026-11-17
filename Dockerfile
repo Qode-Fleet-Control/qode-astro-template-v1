@@ -18,12 +18,7 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 ARG BUILD_ID=""
 ENV PORT=8080 BUILD_ID=$BUILD_ID
 COPY --from=build /app/dist /usr/share/nginx/html
-# /etc/nginx/templates does NOT exist in nginx-unprivileged:1.27-alpine, and
-# the default uid 101 cannot create it under /etc/nginx — so this needs both a
-# mkdir and root. The fleet's static stack pack writes straight to that path
-# and fails with "can't create ...: nonexistent directory".
-USER root
-RUN mkdir -p /etc/nginx/templates && printf 'server {\n  listen ${PORT};\n  root /usr/share/nginx/html;\n  location / { try_files $uri $uri/ /index.html; }\n}\n' \
-    > /etc/nginx/templates/default.conf.template
-USER 101
+# nginx server config (incl. the per-request JSON access log): nginx/default.conf.template.
+# The image's entrypoint renders /etc/nginx/templates/*.template into conf.d at start.
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080
